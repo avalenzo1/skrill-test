@@ -1,0 +1,22 @@
+html, body, #app {
+  background-color: #232323;
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+#app {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+canvas {
+  height: 100%;
+  cursor: url('https://uploads-ssl.webflow.com/63d2d31c94264739ea496e71/63d9ab27c584680487a2fd01_genius-cursor.png'), auto;
+}

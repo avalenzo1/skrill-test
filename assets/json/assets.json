@@ -1,0 +1,57 @@
+[
+  {
+    "type": "image",
+    "name": "ico_tap",
+    "src": "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnV0amN1MGtvYmlqOHVxZHJhdWJocjR6ejg5MzA5NnM0dGtrdDB2ZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/Pw2IfovVMywepDwdXl/giphy.gif"
+  },
+  {
+    "type": "video",
+    "name": "vid_vhs",
+    "src": "https://cdn.glitch.global/b7704957-319e-4b4c-99ef-b74f9a275506/vhs-overlay.mp4?v=1699590338502"
+  },
+  {
+    "type": "image",
+    "name": "ico_flashlight",
+    "src": "https://cdn.glitch.global/b7704957-319e-4b4c-99ef-b74f9a275506/flashlight.png?v=1700098427029"
+  },
+  {
+    "type": "image",
+    "name": "ico_canteen",
+    "src": "https://cdn.glitch.global/b7704957-319e-4b4c-99ef-b74f9a275506/canteen.png?v=1700098188992"
+  },
+  {
+    "type": "image",
+    "name": "spr_player",
+    "src": "https://cdn.glitch.global/b7704957-319e-4b4c-99ef-b74f9a275506/Sprite.png?v=1700096060419"
+  },
+  {
+    "type": "image",
+    "name": "bg_room",
+    "src": "https://cdn.glitch.global/b7704957-319e-4b4c-99ef-b74f9a275506/room.png?v=1699283488876"
+  },
+  {
+    "type": "sound",
+    "name": "snd_roblox",
+    "src": "https://cdn.glitch.global/b7704957-319e-4b4c-99ef-b74f9a275506/do-not-open.mp3?v=1699148590752"
+  },
+  {
+    "type": "sound",
+    "name": "fx_keypress",
+    "src": "https://cdn.glitch.global/b7704957-319e-4b4c-99ef-b74f9a275506/Keyboard-Button-Click-03-c-FesliyanStudios.com.mp3?v=1699148628053"
+  },
+  {
+    "type": "sound",
+    "name": "fx_door",
+    "src": "https://bigsoundbank.com/UPLOAD/mp3/1703.mp3?v=d"
+  },
+  {
+    "type": "sound",
+    "name": "snd_untitled",
+    "src": "https://www.freesoundslibrary.com/wp-content/uploads/2022/04/erie-or-scary-ambient-atmosphere.mp3"
+  },
+  {
+    "type": "sound",
+    "name": "snd_better_days",
+    "src": "https://cdn.glitch.global/b7704957-319e-4b4c-99ef-b74f9a275506/y2mate.com%20-%20BEAR%20%20Frontrooms%20%20HD%20Music.mp3?v=1699499135721"
+  }
+]
