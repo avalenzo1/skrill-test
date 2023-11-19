@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "width": 180,
+    "height": 20
+  },
+
+  "sprites": {
+    "@player/default": {
+      "meta": {
+        "x": 0,
+        "y": 0,
+        "width": 15,
+        "height": 51,
+        "borderWidth": 2,
+        "spacingWidth": 4
+      },
+      
+      "animations": {
+        
+        "down": [
+          [0, 0]
+        ],
+        
+        "up": [
+          [0, 1]
+        ],
+        
+        "right": [
+          [0, 2]
+        ],
+        
+        "left": [
+          [0, 3]
+        ],
+        
+        "down_right": [
+          [0, 4]
+        ],
+        
+        "down_left": [
+          [0, 5]
+        ],
+        
+        "up_left": [
+          [0, 6]
+        ],
+        
+        "up_right": [
+          [0, 7]
+        ]
+      }
+    }
+  }
+}
