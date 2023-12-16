@@ -27,7 +27,12 @@
   {
     "type": "image",
     "name": "bg_room",
-    "src": "https://cdn.glitch.global/b7704957-319e-4b4c-99ef-b74f9a275506/room.png?v=1699283488876"
+    "src": "https://cdn.glitch.global/b7704957-319e-4b4c-99ef-b74f9a275506/room.png?v=1702587027479"
+  },
+  {
+    "type": "image",
+    "name": "bg_hall",
+    "src": "https://cdn.glitch.global/b7704957-319e-4b4c-99ef-b74f9a275506/we_outside.png?v=1702604155688"
   },
   {
     "type": "sound",
@@ -46,8 +51,23 @@
   },
   {
     "type": "sound",
+    "name": "fx_light",
+    "src": "https://cdn.glitch.global/b7704957-319e-4b4c-99ef-b74f9a275506/light-switch-81967.mp3?v=1702587318597"
+  },
+  {
+    "type": "sound",
+    "name": "snd_toreador",
+    "src": "https://cdn.glitch.global/b7704957-319e-4b4c-99ef-b74f9a275506/toreador.mp3?v=1702522101648"
+  },
+  {
+    "type": "sound",
     "name": "snd_untitled",
     "src": "https://www.freesoundslibrary.com/wp-content/uploads/2022/04/erie-or-scary-ambient-atmosphere.mp3"
+  },
+  {
+    "type": "sound",
+    "name": "snd_ambiance",
+    "src": "https://cdn.glitch.global/b7704957-319e-4b4c-99ef-b74f9a275506/apartment_ambiance.mp3?v=1702596205632"
   },
   {
     "type": "sound",
