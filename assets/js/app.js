@@ -15,6 +15,7 @@ import {
   World,
   GameObject,
   StaticBoundObject,
+  InteractiveObject,
   Sprite,
   Camera,
   Manifest,
@@ -24,6 +25,10 @@ import {
 import sprites from "/assets/json/sprites.json" assert { type: "json" };
 import assets from "/assets/json/assets.json" assert { type: "json" };
 
+const $global = {
+  debug: true,
+  keys: {}
+};
 const CANVAS_WIDTH = window.screen.width * window.devicePixelRatio;
 const CANVAS_HEIGHT = window.screen.height * window.devicePixelRatio;
 const PIXEL_SCALE = 4;
@@ -107,6 +112,10 @@ class TextBox {
   destroy() {
     window.removeEventListener("keydown", this.onKeyDown);
     clearInterval(this.intervalId);
+  }
+  
+  render(ctx) {
+    
   }
 }
 
@@ -268,11 +277,26 @@ class Player extends GameObject {
 
     document.addEventListener("keydown", this.handleKeyDown.bind(this));
     document.addEventListener("keyup", this.handleKeyUp.bind(this));
+
+    this.extendRender((object) => {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(
+        manifest.assets.spr_player,
+        this.position.x,
+        this.position.y,
+        this.position.width,
+        this.position.height,
+        0,
+        0,
+        this.position.width,
+        this.position.height
+      );
+    });
   }
 
   step() {
     super.step();
-    
+
     if (!this.inventory.isHidden) return;
 
     this.acc.x = 0;
@@ -336,32 +360,53 @@ class Player extends GameObject {
     if (this.validAnimations.includes(newAnimation))
       this.currentAnimation = newAnimation;
   }
+}
 
-  render() {
-    ctx.save();
+function createDebugRect(object) {
+  function renderDebug() {
+    if ($global.debug) {
+      ctx.fillStyle = "#f002";
+      ctx.fillRect(
+        object.bounds.x,
+        object.bounds.y,
+        object.bounds.w,
+        object.bounds.h
+      );
 
-    ctx.strokeStyle = "red";
-
-    // ctx.translate(CANVAS_WIDTH / 2 - this.center.x, CANVAS_HEIGHT / 2 - this.center.y);
-
-    ctx.imageSmoothingEnabled = false;
-
-    ctx.drawImage(
-      manifest.assets.spr_player,
-      this.position.x,
-      this.position.y,
-      this.position.width,
-      this.position.height,
-      0,
-      0,
-      this.position.width,
-      this.position.height
-    );
-
-    ctx.strokeRect(this.bounds.x, this.bounds.y, this.bounds.w, this.bounds.h);
-
-    ctx.restore();
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 0.1;
+      ctx.strokeRect(
+        object.bounds.x,
+        object.bounds.y,
+        object.bounds.w,
+        object.bounds.h
+      );
+      
+      ctx.fillStyle = "#fff2";
+      ctx.font = "4px monospace";
+      ctx.fillMultiLineText(
+        `UUID: ${object.uuid}\npos: ${JSON.stringify(object.pos)}\nbounds: ${JSON.stringify(object.bounds)}\n`,
+        0,
+        0
+      );
+    }
   }
+
+  object.extendRender(renderDebug, "debug");
+}
+
+function createDialog(world, dialog) {
+  let textbox = new TextBox(dialog);
+  let guiTextbox = new InteractiveObject(0, 0, 0, 0);
+  
+  guiTextbox.extendRender(() => {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0,0,100,100);
+    
+    ctx.fillMultiLineText(textbox.current, 0,0);
+  });
+  
+  world.addObject(guiTextbox);
 }
 
 async function loadStage(src) {
@@ -371,17 +416,56 @@ async function loadStage(src) {
   return { mount, unmount, render };
 }
 
-async function main() {
-  let showDebug = false;
+function adjustGain(audioElement, targetVolume, duration = 2000) {
+  const initialVolume = audioElement.volume;
+  const volumeChangePerMs = (targetVolume - initialVolume) / duration;
 
+  let startTime;
+
+  function updateVolume(currentTime) {
+    if (!startTime) {
+      startTime = currentTime;
+    }
+
+    const elapsed = currentTime - startTime;
+    const newVolume = initialVolume + volumeChangePerMs * elapsed;
+
+    if (elapsed < duration) {
+      audioElement.volume = newVolume;
+      requestAnimationFrame(updateVolume);
+    } else {
+      audioElement.volume = targetVolume;
+    }
+  }
+
+  requestAnimationFrame(updateVolume);
+}
+
+async function main() {
   window.addEventListener("keydown", function (e) {
     switch (e.key) {
       case "F9":
-        showDebug = !showDebug;
+        $global.debug = !$global.debug;
         break;
     }
   });
 
+  // Initialize global objects
+  const world = new World();
+  const camera = new Camera(canvas.width, canvas.height);
+  const player = new Player(118, 112);
+
+  world.addEventListener("newObject", function (e) {
+    createDebugRect(e.detail.object);
+  });
+
+  world.background = "#333";
+  camera.setCenterCoordinates(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+  camera.scale = PIXEL_SCALE;
+  camera.focusOn(player);
+  player.zIndex = 999;
+
+  // Stages
   const loaderStage = (function () {
     function mount() {}
 
@@ -450,7 +534,7 @@ async function main() {
   })();
   const loreStage = (function () {
     const loreInitial = [
-      "Use [a] and [d] keys to progress",
+      "Use [Backspace] and [Enter] keys to progress",
       "You woke up.",
       "It's pitch black in your room.",
       "You check the time on your phone...",
@@ -463,51 +547,17 @@ async function main() {
     ];
     const storyTextBox = new TextBox(loreInitial);
 
-    //     let vhsEffect = new Image();
-
-    //     async function parseChroma()
-    //     {
-    //       ctx.drawImage(
-    //         manifest.assets.vid_vhs,
-    //         0,
-    //         0,
-    //         CANVAS_WIDTH / 8,
-    //         CANVAS_HEIGHT / 8
-    //       );
-
-    //       const imageData = ctx.getImageData(0, 0, CANVAS_WIDTH / 8, CANVAS_WIDTH / 8);
-
-    //       let data = imageData.data;
-
-    //       for (let i = 0; i < data.length; i += 8) {
-    //         const red = data[i + 0];
-    //         const green = data[i + 1];
-    //         const blue = data[i + 2];
-
-    //         if (red > 35 && green > 35 && blue > 35) data[i + 3] = 0;
-    //       }
-
-    //       ctx.putImageData(imageData, 0, 0);
-
-    //       vhsEffect.src = canvas.toDataURL();
-    //     }
-
     function mount() {
       storyTextBox.init();
-      // manifest.assets.vid_vhs.play();
-      // manifest.assets.vid_vhs.loop = true;
     }
 
     function unmount() {
       storyTextBox.destroy();
-      // manifest.assets.vid_vhs.pause();
     }
 
     async function render() {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-      ctx.drawImage(manifest.assets.vid_vhs, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
       ctx.fillStyle = "#bbb";
       ctx.font = "bold 24px monospace";
@@ -540,17 +590,76 @@ async function main() {
     return { mount, unmount, render };
   })();
   
-  const world = new World(240, 252);
-  const player = new Player(158, 112);
-  const camera = new Camera();
+  const apartmentCutsceneStage = (function () {
+    function mount() {
+      setTimeout(() => { manifest.assets.snd_better_days.volume = 0.5; manifest.assets.snd_better_days.play(); }, 2000);
+    }
+    
+    function unmount() {
+      world.clearObjects();
+    }
+    
+    function render() {
+      // Background
+      ctx.fillStyle = "#000   ";
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    }
+    
+    return { mount, unmount, render };
+  })();
   
-  camera.setCenterCoordinates(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
-  camera.focusOn(player);
-
   const apartmentStage = (function () {
-    function mount() {}
+    const hall = new GameObject(0, 0, 0, 0);
+    const wall = new GameObject(0, 0, 500, 72);
+    const door = new StaticBoundObject(108, 126, 34, 50);
+    const cutscene = new InteractiveObject(400,100,50,50);
 
-    function unmount() {}
+    hall.extendRender(() => {
+      ctx.globalAlpha = 1;
+      ctx.drawImage(
+        manifest.assets.bg_hall,
+        0,
+        0,
+        manifest.assets.bg_hall.width,
+        manifest.assets.bg_hall.height
+      );
+    });
+
+    door.addEventListener("collision", function () {
+      nextStage = roomStage;
+    });
+    
+    cutscene.addEventListener("collision", function () {
+      nextStage = apartmentCutsceneStage;
+    });
+
+
+    function mount() {
+
+      manifest.assets.snd_ambiance.volume = 0;
+      manifest.assets.snd_ambiance.loop = true;
+      manifest.assets.snd_ambiance.play();
+
+      adjustGain(manifest.assets.snd_ambiance, 1);
+
+      world.bounds.w = 500;
+      world.bounds.h = 125;
+
+      player.x = 118;
+      player.y = 40;
+
+      world.addObject(player);
+      world.addObject(hall);
+      world.addObject(wall);
+      world.addObject(door);
+      world.addObject(cutscene);
+    }
+
+    function unmount() {
+      adjustGain(manifest.assets.snd_ambiance, 0);
+
+      world.clearObjects();
+    }
 
     function render() {
       world.physics.step();
@@ -559,47 +668,55 @@ async function main() {
 
       ctx.imageSmoothingEnabled = false;
 
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.scale(PIXEL_SCALE, PIXEL_SCALE);
-      ctx.translate(-(canvas.width / 2), -(canvas.height / 2));
+      camera.fixScale(ctx);
 
+      // Background
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      ctx.save();
-
-      ctx.translate(
-        camera.getCoordinates(player.x, 0).x,
-        camera.getCoordinates(0, player.y).y
-      );
-
-      player.render();
+      // World
+      world.render(ctx, camera);
 
       ctx.restore();
 
-      ctx.restore();
+      player.inventory.render();
+      
+      ctx.fillStyle = `rgba(0,0,0, ${1 - ((cutscene.x - player.x + 118) / 400)})`
+      ctx.fillRect(0,0,CANVAS_WIDTH,CANVAS_HEIGHT);
     }
 
     return { mount, unmount, render };
-  })();   
+  })();
   const roomStage = (function () {
     const wall = new StaticBoundObject(0, 15, 240, 110);
-    const door = new StaticBoundObject(162, 96, 30, 50);
-    
-    const wallLeft = new StaticBoundObject(0, 190, 100, 20);
-    wallLeft.θ = 0.4;
+    const door = new StaticBoundObject(108, 76, 34, 50);
+    const cabinet = new StaticBoundObject(162, 120, 66, 20);
+    const light = new InteractiveObject(83,130,23,23);
+    const room = new GameObject(0, 0, 0, 0);
 
-    door.addEventListener("collision", function() {
-      world.removeObject(wall);
-      world.removeObject(door);
-      
-      nextStage = apartmentStage;
+    room.extendRender(() => {
+      ctx.drawImage(
+        manifest.assets.bg_room,
+        0,
+        0,
+        manifest.assets.bg_room.width,
+        manifest.assets.bg_room.height
+      );
+    });
+    
+    light.addEventListener("collision", function (e) {
+      if (e.detail.object === player && $global.keys["Enter"]) 
+      {
+        manifest.assets.fx_light.currentTime = 0;
+        manifest.assets.fx_light.play();
+        
+        createDialog(world, ["The light doesn't work."]);
+      }
     });
 
-    world.addObject(wallLeft);
-    world.addObject(wall);
-    world.addObject(door);
-    world.addObject(player);
+    door.addEventListener("collision", function () {
+      nextStage = apartmentStage;
+    });
 
     const gradient = ctx.createRadialGradient(
       CANVAS_WIDTH / 2,
@@ -617,10 +734,28 @@ async function main() {
     function mount() {
       manifest.assets.snd_untitled.play();
       manifest.assets.snd_untitled.loop = true;
+      manifest.assets.snd_untitled.volume = 0;
+
+      adjustGain(manifest.assets.snd_untitled, 1);
+
+      player.x = 118;
+      player.y = 112;
+
+      world.bounds.w = 240;
+      world.bounds.h = 235;
+
+      world.addObject(light);
+      world.addObject(room);
+      world.addObject(cabinet);
+      world.addObject(wall);
+      world.addObject(door);
+      world.addObject(player);
     }
 
     function unmount() {
-      manifest.assets.snd_untitled.pause();
+      adjustGain(manifest.assets.snd_untitled, 0);
+
+      world.clearObjects();
     }
 
     function render() {
@@ -628,54 +763,18 @@ async function main() {
 
       ctx.save();
 
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.scale(PIXEL_SCALE, PIXEL_SCALE);
-      ctx.translate(-(canvas.width / 2), -(canvas.height / 2));
-
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-      ctx.save();
-
-      ctx.fillStyle = "red";
-
-      // ctx.translate(
-      //   CANVAS_WIDTH / 2 - (manifest.assets.bg_room.width) / 2,
-      //   CANVAS_HEIGHT / 2 - (manifest.assets.bg_room.height) / 2
-      // );
-
-      ctx.translate(
-        camera.getCoordinates(0, 0).x,
-        camera.getCoordinates(0, 0).y
-      );
-
       ctx.imageSmoothingEnabled = false;
 
-      ctx.drawImage(
-        manifest.assets.bg_room,
-        0,
-        0,
-        manifest.assets.bg_room.width,
-        manifest.assets.bg_room.height
-      );
+      camera.fixScale(ctx);
 
-      ctx.restore();
-      
-      ctx.save();
-      ctx.fillRect(wallLeft.x, wallLeft.y, wallLeft.w, wallLeft.h);
-      ctx.restore();
+      // Background
+      ctx.fillStyle = "#111";
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      ctx.save();
+      // World
+      world.render(ctx, camera);
 
-      ctx.translate(
-        camera.getCoordinates(player.x, 0).x,
-        camera.getCoordinates(0, player.y).y
-      );
-
-      player.render();
-
-      ctx.restore();
-
+      // Gradient
       ctx.save();
 
       ctx.fillStyle = gradient;
@@ -686,33 +785,6 @@ async function main() {
       ctx.restore();
 
       player.inventory.render();
-
-      if (showDebug) {
-        
-        
-        ctx.textAlign = "left";
-        ctx.font = "12px monospace";
-        ctx.fillStyle = "#fff";
-
-        for (let [id, object] of world.objects) {
-          ctx.fillText(`${camera.focus.x} ${camera.focus.y}`, 0, 12)
-          
-          ctx.save();
-          
-          ctx.translate(object.x + object.center.x + object.bounds.x, object.y + object.center.y + object.bounds.y);
-          ctx.rotate(object.θ);
-          ctx.fillRect(
-            -object.center.x,
-            -object.center.y,
-            object.bounds.w,
-            object.bounds.h
-          );
-          
-          ctx.restore();
-        }
-        
-        
-      }
     }
 
     return { render, unmount, mount };
@@ -723,6 +795,40 @@ async function main() {
   let nextStage = undefined;
 
   Time.previousTime = Date.now();
+
+  function renderDebug() {    
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(
+      world.bounds.x,
+      world.bounds.y,
+      world.bounds.w,
+      world.bounds.h
+    );
+    
+    ctx.fillStyle = "#FF5800";
+    for (let [id, object] of world.objects) {
+      ctx.save();
+
+      ctx.translate(
+        object.x + object.center.x + object.bounds.x,
+        object.y + object.center.y + object.bounds.y
+      );
+      ctx.rotate(object.θ);
+      ctx.fillRect(
+        -object.center.x,
+        -object.center.y,
+        object.bounds.w,
+        object.bounds.h
+      );
+
+      ctx.restore();
+    }
+    
+    ctx.textAlign = "left";
+    ctx.font = "24px monospace";
+    ctx.fillStyle = "white";
+    ctx.fillMultiLineText(`XY: ${parseInt(camera.focus.x)} / ${parseInt(camera.focus.y)}\nKEYS: ${JSON.stringify($global)}\nSIZE: ${world.objects.size}`, 0, 24);
+  }
 
   function loop() {
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -735,11 +841,15 @@ async function main() {
       prevStage.unmount();
       currStage.mount();
     }
+    
+    
 
     try {
       Time.currentTime = performance.now();
 
       currStage.render();
+
+      if ($global.debug) renderDebug();
 
       Time.previousTime = performance.now();
     } catch (error) {
@@ -760,3 +870,12 @@ async function main() {
 }
 
 document.addEventListener("DOMContentLoaded", main);
+
+
+document.addEventListener("keydown", (e) => {
+  $global.keys[e.key] = true;
+});
+
+document.addEventListener("keyup", (e) => {
+  $global.keys[e.key] = false;
+});

@@ -38,7 +38,7 @@ const Time = {
   currentTime: performance.now(),
   get deltaTime() {
     return (this.currentTime - this.previousTime) / 1000;
-  }
+  },
 };
 
 function Video(src) {
@@ -91,8 +91,9 @@ class Physics {
   }
 
   isColliding(obj1, obj2) {
-    if (obj1 instanceof StaticBoundObject && obj2 instanceof StaticBoundObject) return false;
-    
+    if (obj1 instanceof StaticBoundObject && obj2 instanceof StaticBoundObject)
+      return false;
+
     return (
       obj1.x + obj1.bounds.x < obj2.x + obj1.bounds.x + obj2.bounds.w &&
       obj1.x + obj1.bounds.x + obj1.bounds.w > obj2.x + obj2.bounds.x &&
@@ -101,76 +102,125 @@ class Physics {
     );
   }
 
-  handleCollision(obj1, obj2) {    
+  handleCollision(obj1, obj2) {
+    obj1.dispatchEvent(new CustomEvent("collision", {
+      detail: {
+        object: obj2
+      }
+    }));
+    
+    obj2.dispatchEvent(new CustomEvent("collision", {
+      detail: {
+        object: obj1
+      }
+    }));
+    
+    if (obj1 instanceof InteractiveObject || obj2 instanceof InteractiveObject) return;
+    
     // Handle Collision
-    if (obj1.vel.y.toFixed(3) > 0) { // checks if target_obj is positive (this is asking if the velocity faces down)
-        obj1.y -= 1 /* ((this.target_obj.y - hitbox.y) + (this.target.h + this.target.yOffset)) */ ;
+    if (obj1.vel.y.toFixed(3) > 0) {
+      // checks if target_obj is positive (this is asking if the velocity faces down)
+      obj1.y =
+        obj1.prevPos.y; /* ((this.target_obj.y - hitbox.y) + (this.target.h + this.target.yOffset)) */
     }
     if (obj1.vel.y.toFixed(3) < 0) {
-        obj1.y += 1 /* ((hitbox.y + hitbox.h) - (this.target_obj.y + this.target.yOffset)) */ ;
+      obj1.y =
+        obj1.prevPos.y; /* ((hitbox.y + hitbox.h) - (this.target_obj.y + this.target.yOffset)) */
     }
-    if (obj1.vel.x.toFixed(3) > 0) { // same as above but the velocity faces right
-        obj1.x -= 1; /* ((this.target_obj.x - hitbox.w) + (this.target.w + this.target.xOffset)) */ ;
+    if (obj1.vel.x.toFixed(3) > 0) {
+      // same as above but the velocity faces right
+      obj1.x =
+        obj1.prevPos.x; /* ((this.target_obj.x - hitbox.w) + (this.target.w + this.target.xOffset)) */
     }
     if (obj1.vel.x.toFixed(3) < 0) {
-        obj1.x += 1 /* ((hitbox.x + hitbox.w) - (this.target_obj.x + this.target.xOffset)) */ ;
+      obj1.x =
+        obj1.prevPos.x; /* ((hitbox.x + hitbox.w) - (this.target_obj.x + this.target.xOffset)) */
     }
-    
+
     obj1.vel.x = obj1.vel.y = 0;
-        
-    obj1.dispatchEvent(new Event('collision'));
-    obj2.dispatchEvent(new Event('collision'));
   }
 
   step(deltaTime) {
     for (const [id, obj1] of this.world.objects) {
       obj1.step(deltaTime);
-      
+
       for (const [id, obj2] of this.world.objects) {
         if (obj1 === obj2) continue;
 
         if (this.isColliding(obj1, obj2)) {
-          console.log("HEY! LISTEN!");
-
           this.handleCollision(obj1, obj2);
         }
       }
-      
+
       if (obj1 instanceof StaticBoundObject) continue;
-      
+
       if (obj1.x + obj1.bounds.x < 0) obj1.x = obj1.bounds.x;
-      if (obj1.x + obj1.bounds.x + obj1.bounds.w > this.world.bounds.w) obj1.x = this.world.bounds.w - obj1.bounds.w - obj1.bounds.x;
+      if (obj1.x + obj1.bounds.x + obj1.bounds.w > this.world.bounds.w)
+        obj1.x = this.world.bounds.w - obj1.bounds.w - obj1.bounds.x;
       if (obj1.y + obj1.bounds.y < 0) obj1.y = -obj1.bounds.y;
-      if (obj1.y + obj1.bounds.y + obj1.bounds.h > this.world.bounds.h) obj1.y = this.world.bounds.h - obj1.bounds.h - obj1.bounds.y;
+      if (obj1.y + obj1.bounds.y + obj1.bounds.h > this.world.bounds.h)
+        obj1.y = this.world.bounds.h - obj1.bounds.h - obj1.bounds.y;
     }
   }
 }
 
 class World extends EventTarget {
-  constructor(w, h) {
+  constructor(w = 300, h = 300) {
     super();
-    
+
     this.physics = new Physics(this);
     this.objects = new Map();
-    this.bounds = new Rect(0,0,w,h);
+    this.bounds = new Rect(0, 0, w, h);
+    this.background = "transparent";
+  }
+  
+  removeObject(object) {
+    if (object instanceof GameObject) {
+      this.objects.delete(object.uuid);
+      
+      this.dispatchEvent(
+        new CustomEvent("deleteObject", {
+          detail: {
+            object
+          }
+        })
+      );
+    }
   }
 
   addObject(object) {
     if (object instanceof GameObject) {
       this.objects.set(object.uuid, object);
-      this.dispatchEvent(new Event('obj:add'));
+      this.dispatchEvent(
+        new CustomEvent("newObject", {
+          detail: {
+            object
+          }
+        })
+      );
     }
   }
 
-  removeObject(object) {
-    
-    if (object instanceof GameObject) this.objects.delete(object.uuid);
-  
-    this.dispatchEvent(new Event('obj:del'));
+  sortObjects() {
+    this.objects = new Map(
+      [...this.objects.entries()].sort((a, b) => a[1].zIndex - b[1].zIndex)
+    );
   }
-
+  
+  clearObjects() {
+    this.objects.clear();
+  }
+  
   getObject(id) {
     return this.objects.get(id);
+  }
+
+  render(ctx, camera) {
+    this.sortObjects();
+
+    for (const [id, object] of this.objects) {
+      object.render(ctx, camera);
+    }
   }
 }
 
@@ -180,8 +230,30 @@ class Rect {
     this.y = y || 0;
     this.w = w;
     this.h = h;
-    this.cx = w / 2;
-    this.cy = w / 2;
+  }
+
+  get width() {
+    return this.w;
+  }
+
+  set width(w) {
+    this.w = w;
+  }
+
+  get height() {
+    return this.h;
+  }
+
+  set height(h) {
+    this.h = h;
+  }
+
+  get cx() {
+    return this.w / 2;
+  }
+
+  get cy() {
+    return this.h / 2;
   }
 }
 
@@ -196,16 +268,17 @@ class Rect {
 class GameObject extends EventTarget {
   constructor(x, y, w, h) {
     super();
-    
+
     this.uuid = UUID();
+
+    this.zIndex = 1;
 
     this.mass = 10;
 
+    this.prevPos = new Vector2(x, y); // Previous Position
     this.pos = new Vector2(x, y); // Position
     this.vel = new Vector2(); // Velocity
     this.acc = new Vector2(); // Acceleration
-    
-    this.path = new Path2D();
 
     this.w = w;
     this.h = h;
@@ -215,16 +288,20 @@ class GameObject extends EventTarget {
 
     this.bounds = new Rect(0, 0, w, h);
     this.center = new Vector2(this.bounds.w / 2, this.bounds.h / 2);
+
+    this.callbacks = new Map();
   }
-  
-  get rotation()
-  {
+
+  get rotation() {
     return this.θ;
   }
-  
-  get mu()
-  {
+
+  get mu() {
     return this.µ;
+  }
+
+  set mu(µ) {
+    this.µ = µ;
   }
 
   get x() {
@@ -243,9 +320,12 @@ class GameObject extends EventTarget {
   // Updates Physics of item
   step() {
     // if (typeof deltaTime === 'undefined') throw new Error(`Could not update ${this.uuid} because deltaTime was not given`);
-    
+
     this.vel.x += this.acc.x * Time.deltaTime;
     this.vel.y += this.acc.y * Time.deltaTime;
+
+    this.prevPos.x = this.pos.x;
+    this.prevPos.y = this.pos.y;
 
     // Update position based on velocity
     this.pos.x += Number((this.vel.x * Time.deltaTime).toFixed(2));
@@ -255,19 +335,49 @@ class GameObject extends EventTarget {
     this.vel.x *= Math.pow(this.µ, Time.deltaTime);
     this.vel.y *= Math.pow(this.µ, Time.deltaTime);
   }
+
+  extendRender(callback, key=UUID()) {
+    if (typeof callback === "function") {
+      this.callbacks.set(key, callback);
+    } else {
+      console.error("Invalid custom render callback. Must be a function.");
+    }
+  }
   
-  render(ctx, camera)
+  reduceRender(key)
   {
-    
+    this.callbacks.remove(key);
+  }
+
+  render(ctx, camera) {
+    for (const [key, callback] of this.callbacks) {
+      ctx.save();
+
+      ctx.translate(
+        camera.getCoordinates(this.pos.x, this.pos.y).x,
+        camera.getCoordinates(this.pos.x, this.pos.y).y
+      );
+
+      callback(this);
+
+      ctx.restore();
+    }
+  }
+}
+
+class InteractiveObject extends GameObject {
+  constructor(x, y, w, h) {
+    super(x, y, w, h);
+
+    this.mass = Infinity; // Infinity
   }
 }
 
 class StaticBoundObject extends GameObject {
-  constructor(x, y, w, h)
-  {
+  constructor(x, y, w, h) {
     super(x, y, w, h);
 
-    this.mass = 1000000000; // Infinity
+    this.mass = Infinity; // Infinity
   }
 }
 
@@ -392,15 +502,16 @@ class Sprite {
 }
 
 class Camera {
-  constructor() {
+  constructor(width, height) {
     this.pos = new Vector2();
+    this.bounds = new Rect(0, 0, width, height);
+    this.scale = 1;
     this.θ = 0;
     this.focus;
   }
 
   focusOn(object) {
-    if (object instanceof GameObject)
-    {
+    if (object instanceof GameObject) {
       this.focus = object;
     }
   }
@@ -410,6 +521,12 @@ class Camera {
     this.pos.y = y;
 
     return this;
+  }
+
+  fixScale(ctx) {
+    ctx.translate(this.bounds.cx, this.bounds.cy);
+    ctx.scale(this.scale, this.scale);
+    ctx.translate(-this.bounds.cx, -this.bounds.cy);
   }
 
   getCoordinates(x, y) {
@@ -433,6 +550,7 @@ export {
   Camera,
   Sprite,
   GameObject,
+  InteractiveObject,
   StaticBoundObject,
   Vector2,
   Frame,
